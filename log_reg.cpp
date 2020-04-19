@@ -154,14 +154,14 @@ void grad_desc(float* betas, float** data, int* yvec, float lr, int max_iters, i
         cost = cost_func(betas, data, yvec, n_rows, n_features);
         float* gradient = new float[n_features];
         log_gradient(gradient, betas, data, yvec, n_rows, n_features);
-        cout << "Gradient: ";
-        for (int b = 0; b < n_features; b++) {
-            cout << gradient[b] << ' ';
-        }
-        cout << endl;
         for (int b = 0; b < n_features; b++) { // adjust betas
             betas[b] -= lr * gradient[b];
         }
+        cout << "Betas: ";
+        for (int b = 0; b < n_features; b++) {
+            cout << betas[b] << ' ';
+        }
+        cout << endl;
         cout << "Iteration " << num_iter << ": Cost = " << cost << endl;
         num_iter++;
     }
@@ -170,11 +170,11 @@ void grad_desc(float* betas, float** data, int* yvec, float lr, int max_iters, i
 float predict(float* betas, float** data, int* yvec, int n_rows, int n_features) {
     float* log_func_v = new float[n_rows];
     logistic_func(log_func_v, betas, data, n_rows, n_features);
-
+    float threshold = 0.7;
     int correct = 0;
     for (int i = 0; i < n_rows; i++) {
         cout << "(" << log_func_v[i] << ", " << yvec[i] << ")";
-        if ((yvec[i] == 0 && log_func_v[i] < 0.7) || (yvec[i] == 1 && log_func_v[i] >= 0.7)) {
+        if ((yvec[i] == 0 && log_func_v[i] <= threshold) || (yvec[i] == 1 && log_func_v[i] > threshold)) {
             correct++;
         }
     }
@@ -185,8 +185,8 @@ float predict(float* betas, float** data, int* yvec, int n_rows, int n_features)
 int main() {
     int n_rows = 100, n_features = 26;
     int n_models = 2, modelID = 1; // model predicting likelihood of relapse in month 4
-    int max_iters = 2;
-    float lr = 1;
+    int max_iters = 200;
+    float lr = 0.01;
 
     cout << "--- Loading training data...";
     char* training_filename = (char*)"training_data.csv";
@@ -198,7 +198,7 @@ int main() {
     cout << " done! ---" << endl << endl;
 
     cout << "--- Loading testing data...";
-    char* testing_filename = (char*)"testing_data.csv";
+    char* testing_filename = (char*)"training_data.csv";
     float** test = new float*[n_rows]; // allocate memory for data
     for (int i = 0; i < n_rows; i++) {
         test[i] = new float[n_features];
@@ -218,7 +218,7 @@ int main() {
     cout << "--- Extracting and re-labelling predictor...";
     int* yvec = new int[n_rows];
     extract_yvec(train, yvec, n_rows);
-    relabel_yvec(yvec, n_rows, modelID, n_models);
+    // relabel_yvec(yvec, n_rows, modelID, n_models);
     cout << " done! ---" << endl << endl;
 
     cout << "--- Training Model..." << endl;

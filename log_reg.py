@@ -72,7 +72,6 @@ def grad_desc(X, y, beta, lr=.01, converge_change=.001):
 		cost = cost_func(beta, X, y)
 		change_cost = old_cost - cost
 		num_iter += 1
-		break
 	print('Optimal Cost:', cost)
 	return beta, num_iter
 
