@@ -10,11 +10,11 @@
 //function to be run on the device
 
 
-//for file stuff
+//FILE IO RELATED
 //max number of lines
-#define MAX_LINES 1000
+    #define MAX_LINES 1000
 //max number of characters/line
-#define MAX_CHAR 300
+    #define MAX_CHAR 300
 
 
 //on the cpu
@@ -46,18 +46,28 @@ int main(void){
         //copying the line from temp to our array
         strncpy(data[ltracker], temp, MAX_CHAR);  
         ltracker++;
-      //  printf("%s \n",temp);
     }
 
     //print output to check
-    for(int i=0; i<MAX_LINES; i++ ){
-        //printf("\n", data[i]);
+    /*for(int i=0; i<MAX_LINES; i++ ){
         printf("%s",data[i]);
-    }
+    }*/
 
     
     fclose(file);
 
+    char* temp2;
+    //the delimiter, in this file its commas
+    constant char deli[2]=",";
+
+    for (int i=0; i<MAX_LINES; i++){
+        //telling it to separate out a line in data by commas
+        temp2 = strtok(data[i], deli);
+        printf("%s\n", temp2);
+        
+        //resetting the variable to 0 for reuse
+        memset(temp2, 0, sizeof(temp2));
+    }
 
 
 
