@@ -57,40 +57,20 @@ int main(void){
     fclose(file);
 
     char* temp2;
-    char temp3[MAX_CHAR+10];
-    ltracker =0;
     //the delimiter, in this file its commas
     const char deli[2]=",";
 
     for (int i=0; i<25; i++){
         //telling it to separate out a line in data by commas
-        //temp2 = strtok(data[i], deli);
-
-       // printf("or:%s \n \tnew: %s\n", data[i],temp2);
-        printf("started with line %d", i);
+    
         temp2 = strtok(data[i], deli);
-        temp3[ltracker] = temp2;
         while(temp2 != NULL){
             printf("%s \n", temp2);
-            temp3[ltracker] = temp2;
-            ltracker ++;
             temp2 = strtok(NULL, deli);	
-
         }
-	    printf("finished line %d", i);
-        //resetting the variable to 0 for reuse
-        data[i] = temp3;
-        memset(temp3, 0, sizeof(temp3));
-    }
-
-    int size = sizeof(data) / sizeof(data[0]);
-    for(int i=0; i<25; i++ ){
         
-        for(int j=0; j<size ; j++){
-            print("%s ", data[i][j]);
-        }
-        printf("\n);
     }
+
 
 
 
