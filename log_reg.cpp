@@ -161,10 +161,11 @@ float predict(float* betas, float** data, int* yvec, int n_rows, int n_features)
 }
 
 int main() {
-    int n_rows = 100, n_features = 26;
-    int n_models = 12, modelID = 4; // model predicting likelihood of relapse in month 4
-    int max_iters = 1000000;
+    int n_rows = 17012, n_features = 26;
+    int n_models = 12, modelID = 12; // model predicting likelihood of relapse in month 4
+    int max_iters = 1000;
     float lr = 0.01;
+    time_t start, end;
 
     cout << "--- Loading training data...";
     char* training_filename = (char*)"training_data.csv";
@@ -175,8 +176,40 @@ int main() {
     loadCSV(train, training_filename, n_rows, n_features+1);
     cout << " done! ---" << endl << endl;
 
+    cout << "--- Extracting and re-labelling predictor...";
+    int* yvec = new int[n_rows];
+    extract_yvec(train, yvec, n_rows);
+    relabel_yvec(yvec, n_rows, modelID, n_models);
+    cout << " done! ---" << endl << endl;
+
+    cout << "--- Training Model..." << flush;
+    float* betas = new float[n_features];
+    initialize_betas(betas, n_features);
+
+    time(&start);
+    float optimal_cost = grad_desc(betas, train, yvec, lr, max_iters, n_rows, n_features);
+    time(&end);
+
+    cout << " done! ---" << endl << endl;
+
+    int time_taken = int(end - start);
+    cout << "Training time: " << time_taken << "sec " << endl;
+    cout << "Cost at solution: " << optimal_cost << endl;
+    cout << "Learned Betas: ";
+    for (int i = 0; i < n_features; i++) {
+        cout << betas[i] << ' ';
+    }
+    cout << endl << endl;
+
+    for (int i = 0; i < n_rows; i++) {
+        delete train[i];
+    }
+    delete [] train;
+    delete [] yvec;
+
     cout << "--- Loading testing data...";
     char* testing_filename = (char*)"testing_data.csv";
+    n_rows = 4252;
     float** test = new float*[n_rows]; // allocate memory for data
     for (int i = 0; i < n_rows; i++) {
         test[i] = new float[n_features];
@@ -185,34 +218,20 @@ int main() {
     cout << " done! ---" << endl << endl;
 
     cout << "--- Extracting and re-labelling predictor...";
-    int* yvec = new int[n_rows];
-    extract_yvec(train, yvec, n_rows);
-    // relabel_yvec(yvec, n_rows, modelID, n_models);
+    int* yvec_test = new int[n_rows];
+    extract_yvec(test, yvec_test, n_rows);
+    relabel_yvec(yvec_test, n_rows, modelID, n_models);
     cout << " done! ---" << endl << endl;
 
-    cout << "--- Training Model..." << flush;
-    float* betas = new float[n_features];
-    initialize_betas(betas, n_features);
-    float optimal_cost = grad_desc(betas, train, yvec, lr, max_iters, n_rows, n_features);
-    cout << " done! ---" << endl << endl;
-
-    cout << "Cost at solution: " << optimal_cost << endl;
-    cout << "Learned Betas: ";
-    for (int i = 0; i < n_features; i++) {
-        cout << betas[i] << ' ';
-    }
-    cout << endl << endl;
-
-    cout << "--- Measuring Performance...";
-    float percent_correct = predict(betas, test, yvec, n_rows, n_features);
-    cout << endl;
+    cout << "--- Testing model...";
+    float percent_correct = predict(betas, test, yvec_test, n_rows, n_features);
     cout << " done! ---" << endl << endl;
     cout << "Percent correct: " << percent_correct << "%" << endl;
 
     for (int i = 0; i < n_rows; i++) {
-        delete train[i];
         delete test[i];
     }
-    delete [] train;
     delete [] test;
+    delete [] yvec_test;
+    delete [] betas;
 }
