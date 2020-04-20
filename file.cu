@@ -12,68 +12,73 @@
 
 //FILE IO RELATED
 //max number of lines
-    #define MAX_LINES 1000
+#define MAX_ROWS 17012
+// max number of columns/features
+#define MAX_COLUMNS 26
 //max number of characters/line
-    #define MAX_CHAR 300
+#define MAX_CHAR 300
 
 
 //on the cpu
 int main(void){
-
+    // array that holds all converted training data
+    float train_data[MAX_ROWS][MAX_COLUMNS];
     //assumed file is in same folder, also rename file here
-    char *filename = "sample_data.csv";
+    char *filename = "testing_data.csv";
     FILE *file;
-
     file = fopen(filename, "r+");
-
-    if(!file){
+    if(!file) {
         printf("Can't open file\n");
         return 0;
     }
-
-    //thinking about how we want to access and store the data
+    //thinking about how we want to access and store the unparsed_data
     //array of lines, does each line break up into array of columns?
-    //feel free to try other ways we could arrange the data
+    //feel free to try other ways we could arrange the unparsed_data
 
-    //var to store all of the data
-    char data[MAX_LINES+10][MAX_CHAR+10];
-    char temp[MAX_LINES+10];
+    //var to store all of the unparsed_data
+    char unparsed_data[MAX_ROWS+10][MAX_CHAR+10];
+    char copying[MAX_ROWS+10];
 
     //keep track which line we are on
     int ltracker=0;
 
-    while(fgets(temp, sizeof(temp)-10, file) != 0){
+    while(fgets(copying, sizeof(copying)-10, file) != 0){
         //copying the line from temp to our array
-        strncpy(data[ltracker], temp, MAX_CHAR);  
+        strncpy(unparsed_data[ltracker], copying, MAX_CHAR);
         ltracker++;
     }
 
-    //print output to check
-    /*for(int i=0; i<25; i++ ){
-        printf("%s",data[i]);
-    }*/
-
-    
     fclose(file);
 
-    char* temp2;
+    //storing the column indvidual value
+    char* col_val;
+
     //the delimiter, in this file its commas
     const char deli[2]=",";
 
-    for (int i=0; i<25; i++){
-        //telling it to separate out a line in data by commas
-    
-        temp2 = strtok(data[i], deli);
-        while(temp2 != NULL){
-            printf("%s \n", temp2);
-            temp2 = strtok(NULL, deli);	
+    for (int row = 0; row < MAX_ROWS; row++){
+        //telling it to separate out a line in unparsed_data by commas
+        col_val = strtok(unparsed_data[row], deli);
+        int col = 0;
+        while(col < MAX_COLUMNS) {
+            printf("%s \n", col_val);
+            col_val = strtok(NULL, deli);
+            train_data[row][col] = atof(col_val);
+            col++;
         }
-        
+    }
+
+    for(int row = 0; row < MAX_ROWS; row++) {
+        printf("Row: %f: ", row);
+        for(int col = 0; col < MAX_COLUMNS; col++) {
+            printf("%f, ", train_data[row][col]);
+        }
+        printf("\n");
     }
 
 
     //TODO: store the lines in the file as arrays
-    //data[0] = [colum1, colum2, column3, .. ,columnN]
+    //unparsed_data[0] = [colum1, colum2, column3, .. ,columnN]
 
     //things on host
     //things to device
