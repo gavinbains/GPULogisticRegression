@@ -140,13 +140,14 @@ float grad_desc(float* betas, float** data, int* yvec, float lr, int max_iters, 
 float predict(float* betas, float** data, int* yvec, int n_rows, int n_features) {
     float* log_func_v = new float[n_rows];
     logistic_func(log_func_v, betas, data, n_rows, n_features);
-    float threshold_step = 0.05;
+    float threshold_step = 0.1;
 
     float optimal_percent_correct = 0;
-    for (int t = 1; t <= 20; t++) {
+    for (int t = 1; t <= 10; t++) {
         float threshold = threshold_step * t;
         float correct = 0.0;
         for (int i = 0; i < n_rows; i++) {
+            cout << '(' << yvec[i] << "," << log_func_v[i] << ')' << ' ';
             if ((yvec[i] == 0 && log_func_v[i] <= threshold) || (yvec[i] == 1 && log_func_v[i] > threshold)) {
                 correct++;
             }
@@ -155,39 +156,28 @@ float predict(float* betas, float** data, int* yvec, int n_rows, int n_features)
         if (percent_correct > optimal_percent_correct) {
             optimal_percent_correct = percent_correct;
         }
+        cout << endl << endl;
     }
 
     return optimal_percent_correct;
 }
 
-int main() {
-    int n_rows = 17012, n_features = 26;
-    int n_models = 12, modelID = 12; // model predicting likelihood of relapse in month 4
-    int max_iters = 1000;
+void logistic_regression(float** train, float** test, int n_rows_tr, int n_rows_te, int n_features, int modelID, int n_models) {
     float lr = 0.01;
-    time_t start, end;
-
-    cout << "--- Loading training data...";
-    char* training_filename = (char*)"training_data.csv";
-    float** train = new float*[n_rows]; // allocate memory for data
-    for (int i = 0; i < n_rows; i++) {
-        train[i] = new float[n_features];
-    }
-    loadCSV(train, training_filename, n_rows, n_features+1);
-    cout << " done! ---" << endl << endl;
-
-    cout << "--- Extracting and re-labelling predictor...";
-    int* yvec = new int[n_rows];
-    extract_yvec(train, yvec, n_rows);
-    relabel_yvec(yvec, n_rows, modelID, n_models);
+    int max_iters = 10000; // 10k
+    cout << "--- Extracting and re-labelling train predictor...";
+    int* yvec = new int[n_rows_tr];
+    extract_yvec(train, yvec, n_rows_tr);
+    relabel_yvec(yvec, n_rows_tr, modelID, n_models);
     cout << " done! ---" << endl << endl;
 
     cout << "--- Training Model..." << flush;
     float* betas = new float[n_features];
     initialize_betas(betas, n_features);
 
+    time_t start, end;
     time(&start);
-    float optimal_cost = grad_desc(betas, train, yvec, lr, max_iters, n_rows, n_features);
+    float optimal_cost = grad_desc(betas, train, yvec, lr, max_iters, n_rows_tr, n_features);
     time(&end);
 
     cout << " done! ---" << endl << endl;
@@ -201,37 +191,52 @@ int main() {
     }
     cout << endl << endl;
 
-    for (int i = 0; i < n_rows; i++) {
+    for (int i = 0; i < n_rows_tr; i++) {
         delete train[i];
     }
     delete [] train;
     delete [] yvec;
 
-    cout << "--- Loading testing data...";
-    char* testing_filename = (char*)"testing_data.csv";
-    n_rows = 4252;
-    float** test = new float*[n_rows]; // allocate memory for data
-    for (int i = 0; i < n_rows; i++) {
-        test[i] = new float[n_features];
-    }
-    loadCSV(test, testing_filename, n_rows, n_features);
-    cout << " done! ---" << endl << endl;
-
-    cout << "--- Extracting and re-labelling predictor...";
-    int* yvec_test = new int[n_rows];
-    extract_yvec(test, yvec_test, n_rows);
-    relabel_yvec(yvec_test, n_rows, modelID, n_models);
+    cout << "--- Extracting and re-labelling test predictor...";
+    int* yvec_test = new int[n_rows_te];
+    extract_yvec(test, yvec_test, n_rows_te);
+    relabel_yvec(yvec_test, n_rows_te, modelID, n_models);
     cout << " done! ---" << endl << endl;
 
     cout << "--- Testing model...";
-    float percent_correct = predict(betas, test, yvec_test, n_rows, n_features);
+    float percent_correct = predict(betas, test, yvec_test, n_rows_te, n_features);
     cout << " done! ---" << endl << endl;
     cout << "Percent correct: " << percent_correct << "%" << endl;
 
-    for (int i = 0; i < n_rows; i++) {
+    for (int i = 0; i < n_rows_te; i++) {
         delete test[i];
     }
     delete [] test;
     delete [] yvec_test;
     delete [] betas;
+}
+
+int main() {
+    int modelID = 2, n_models = 2;
+    cout << "--- Loading training data...";
+    int n_rows_tr = 17012, n_features = 26;
+    char* training_filename = (char*)"training_data.csv";
+    float** train = new float*[n_rows_tr]; // allocate memory for data
+    for (int i = 0; i < n_rows_tr; i++) {
+        train[i] = new float[n_features];
+    }
+    loadCSV(train, training_filename, n_rows_tr, n_features+1);
+    cout << " done! ---" << endl << endl;
+
+    cout << "--- Loading testing data...";
+    char* testing_filename = (char*)"testing_data.csv";
+    int n_rows_te = 4252;
+    float** test = new float*[n_rows_te]; // allocate memory for data
+    for (int i = 0; i < n_rows_te; i++) {
+        test[i] = new float[n_features];
+    }
+    loadCSV(test, testing_filename, n_rows_te, n_features);
+    cout << " done! ---" << endl << endl;
+
+    logistic_regression(train, test, n_rows_tr, n_rows_te, n_features, modelID, n_models);
 }
