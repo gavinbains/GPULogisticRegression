@@ -65,11 +65,13 @@ int main(void){
         //temp2 = strtok(data[i], deli);
 
        // printf("or:%s \n \tnew: %s\n", data[i],temp2);
-        temp2 = strtok(data[i], deli);
+        printf("started with line %d", i);
+	temp2 = strtok(data[i], deli);
 	while(temp2 != NULL){
 		printf("%s \n", temp2);
 		temp2 = strtok(NULL, deli);	
 }
+	printf("finished line %d", i);
         //resetting the variable to 0 for reuse
         //memset(temp2, 0, sizeof(temp2));
     }
