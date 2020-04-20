@@ -147,7 +147,7 @@ float predict(float* betas, float** data, int* yvec, int n_rows, int n_features)
         float threshold = threshold_step * t;
         float correct = 0.0;
         for (int i = 0; i < n_rows; i++) {
-            cout << '(' << yvec[i] << "," << log_func_v[i] << ')' << ' ';
+            // cout << '(' << yvec[i] << "," << log_func_v[i] << ')' << ' ';
             if ((yvec[i] == 0 && log_func_v[i] <= threshold) || (yvec[i] == 1 && log_func_v[i] > threshold)) {
                 correct++;
             }
@@ -156,7 +156,7 @@ float predict(float* betas, float** data, int* yvec, int n_rows, int n_features)
         if (percent_correct > optimal_percent_correct) {
             optimal_percent_correct = percent_correct;
         }
-        cout << endl << endl;
+        // cout << endl << endl;
     }
 
     return optimal_percent_correct;
@@ -217,7 +217,7 @@ void logistic_regression(float** train, float** test, int n_rows_tr, int n_rows_
 }
 
 int main() {
-    int modelID = 2, n_models = 2;
+    int modelID = 1, n_models = 2;
     cout << "--- Loading training data...";
     int n_rows_tr = 17012, n_features = 26;
     char* training_filename = (char*)"training_data.csv";
