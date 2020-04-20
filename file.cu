@@ -22,13 +22,16 @@
 //on the cpu
 int main(void){
     // array that holds all converted training data
-    float train_data[MAX_ROWS][MAX_COLUMNS];
+    float **train_data = (float **) malloc(MAX_ROWS * sizeof(float *));
+    for(int i = 0; i < MAX_COLUMNS; i++) {
+        train_data[i] = (float *) malloc(MAX_COLUMNS * sizeof(float));
+    }
     //assumed file is in same folder, also rename file here
     char *filename = "testing_data.csv";
     FILE *file;
     file = fopen(filename, "r+");
     if(!file) {
-        printf("Can't open file\n");
+        printf("Can't open file \n");
         return 0;
     }
     //thinking about how we want to access and store the unparsed_data
