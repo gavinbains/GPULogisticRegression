@@ -36,7 +36,7 @@ int main(void){
     //feel free to try other ways we could arrange the data
 
     //var to store all of the data
-    char data[MAX_LINES+10];
+    char data[MAX_LINES+10][MAX_CHAR+10];
     char temp[MAX_LINES+10];
 
     //keep track which line we are on
@@ -44,15 +44,15 @@ int main(void){
 
     while(fgets(temp, sizeof(temp)-10, file) != 0){
         //copying the line from temp to our array
-        //strncpy(data[ltracker], temp, MAX_CHAR);  
-        //ltracker++;
-        printf("%s \n",temp);
+        strncpy(data[ltracker], temp, MAX_CHAR);  
+        ltracker++;
+      //  printf("%s \n",temp);
     }
 
     //print output to check
-    for(int i=0; i<; i++ ){
+    for(int i=0; i<MAX_LINES; i++ ){
         //printf("\n", data[i]);
-        printf()
+        printf("%s",data[i]);
     }
 
     
