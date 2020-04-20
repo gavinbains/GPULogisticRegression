@@ -65,14 +65,15 @@ int main(void){
     //the delimiter, in this file its commas
     const char deli[2]=",";
 
+    //data parsing complete
     for (int row = 0; row < MAX_ROWS; row++){
         //telling it to separate out a line in unparsed_data by commas
         col_val = strtok(unparsed_data[row], deli);
         for(int col  = 0; col < MAX_COLUMNS; col++) {
             col_val = strtok(NULL, deli);
-	    if(col_val != NULL) {
- 		train_data[row][col] = atof(col_val);
-	    }
+            if(col_val != NULL) {
+                train_data[row][col] = atof(col_val);
+            }
         }
     }
 
@@ -82,7 +83,9 @@ int main(void){
             printf("%f, ", train_data[row][col]);
         }
         printf("\n");
-        break;
+        if(row == 25) {
+            break;
+        }
     }
 
 
