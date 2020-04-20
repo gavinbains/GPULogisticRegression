@@ -72,7 +72,8 @@ int main(void){
     }
 
 
-
+    //TODO: store the lines in the file as arrays
+    //data[0] = [colum1, colum2, column3, .. ,columnN]
 
     //things on host
     //things to device
