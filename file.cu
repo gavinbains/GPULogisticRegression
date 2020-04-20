@@ -23,9 +23,15 @@
 int main(void){
     // array that holds all converted training data
     float **train_data = (float **) malloc(MAX_ROWS * sizeof(float *));
-    for(int i = 0; i < MAX_COLUMNS; i++) {
+    for(int i = 0; i < MAX_ROWS; i++) {
         train_data[i] = (float *) malloc(MAX_COLUMNS * sizeof(float));
     }
+    for(int i = 0; i < MAX_ROWS; i++) {
+	for(int j = 0; j < MAX_COLUMNS; j++) {
+	    train_data[i][j] = 0.0f;
+	}
+    }
+    printf("done initializing. \n");
     //assumed file is in same folder, also rename file here
     char *filename = "testing_data.csv";
     FILE *file;
@@ -64,17 +70,20 @@ int main(void){
         col_val = strtok(unparsed_data[row], deli);
         for(int col  = 0; col < MAX_COLUMNS; col++) {
             col_val = strtok(NULL, deli);
-            train_data[row][col] = atof(col_vol);
+	    if(col_val != NULL) {
+ 		train_data[row][col] = atof(col_val);
+	    }
         }
     }
 
-    /* for(int row = 0; row < MAX_ROWS; row++) {
+    for(int row = 0; row < MAX_ROWS; row++) {
         printf("Row: %f: ", row);
         for(int col = 0; col < MAX_COLUMNS; col++) {
             printf("%f, ", train_data[row][col]);
         }
         printf("\n");
-    } */
+        break;
+    }
 
 
     //TODO: store the lines in the file as arrays
