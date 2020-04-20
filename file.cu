@@ -61,20 +61,19 @@ int main(void){
         col_val = strtok(unparsed_data[row], deli);
         int col = 0;
         while(col < MAX_COLUMNS) {
-            printf("%s \n", col_val);
             col_val = strtok(NULL, deli);
-            train_data[row][col] = atof(col_val);
+            // train_data[row][col] = atof(col_val);
             col++;
         }
     }
 
-    for(int row = 0; row < MAX_ROWS; row++) {
+    /* for(int row = 0; row < MAX_ROWS; row++) {
         printf("Row: %f: ", row);
         for(int col = 0; col < MAX_COLUMNS; col++) {
             printf("%f, ", train_data[row][col]);
         }
         printf("\n");
-    }
+    } */
 
 
     //TODO: store the lines in the file as arrays
