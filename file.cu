@@ -16,14 +16,14 @@
 //max number of characters/line
 #define MAX_CHAR 300
 
-void LoadCSV(float** training_data) {
+bool LoadCSV(float** training_data) {
     //assumed file is in same folder, also rename file here
     char *filename = "testing_data.csv";
     FILE *file;
     file = fopen(filename, "r+");
     if(!file) {
         printf("Can't open file \n");
-        return 0;
+        return false;
     }
     // unparsed data straight from file
     char unparsed_data[MAX_ROWS+10][MAX_CHAR+10];
@@ -50,6 +50,7 @@ void LoadCSV(float** training_data) {
             }
         }
     }
+    return true;
 }
 
 //on the cpu
@@ -60,14 +61,15 @@ int main(void){
         train_data[i] = (float *) malloc(MAX_COLUMNS * sizeof(float));
     }
 
-    LoadCSV(train_data);
-    for(int i = 0; i < MAX_ROWS; i++) {
-        printf("Row %i: ", i );
-        for(int j = 0; j < MAX_COLUMNS; j++) {
-            printf("%f, ", train_data[i][j]);
+    if(LoadCSV(train_data)) {
+        for(int i = 0; i < MAX_ROWS; i++) {
+            printf("Row %i: ", i );
+            for(int j = 0; j < MAX_COLUMNS; j++) {
+                printf("%f, ", train_data[i][j]);
+            }
+            printf("\n");
+            break;
         }
-        printf("\n");
-        break;
     }
     //data parsing completed
 
