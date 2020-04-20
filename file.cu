@@ -49,7 +49,7 @@ int main(void){
     }
 
     //print output to check
-    /*for(int i=0; i<MAX_LINES; i++ ){
+    /*for(int i=0; i<25; i++ ){
         printf("%s",data[i]);
     }*/
 
@@ -58,15 +58,20 @@ int main(void){
 
     char* temp2;
     //the delimiter, in this file its commas
-    constant char deli[2]=",";
+    const char deli[2]=",";
 
-    for (int i=0; i<MAX_LINES; i++){
+    for (int i=0; i<25; i++){
         //telling it to separate out a line in data by commas
+        //temp2 = strtok(data[i], deli);
+
+       // printf("or:%s \n \tnew: %s\n", data[i],temp2);
         temp2 = strtok(data[i], deli);
-        printf("%s\n", temp2);
-        
+	while(temp2 != NULL){
+		printf("%s \n", temp2);
+		temp2 = strtok(NULL, deli);	
+}
         //resetting the variable to 0 for reuse
-        memset(temp2, 0, sizeof(temp2));
+        //memset(temp2, 0, sizeof(temp2));
     }
 
 
