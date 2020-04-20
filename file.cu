@@ -60,11 +60,9 @@ int main(void){
         //telling it to separate out a line in unparsed_data by commas
         col_val = strtok(unparsed_data[row], deli);
         for(int col  = 0; col < MAX_COLUMNS; col++) {
-            //train_data[row][col] = atof(col_vol);
             col_val = strtok(NULL, deli);
-            printf("%f",atof(col_val));
+            train_data[row][col] = atof(col_vol);
         }
-        break;
     }
 
     /* for(int row = 0; row < MAX_ROWS; row++) {
