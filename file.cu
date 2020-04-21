@@ -20,6 +20,19 @@
 //max number of characters/line
 #define MAX_CHAR 300
 
+__global__ void grad_desc(){
+
+}
+
+__global__ void extract(){
+
+}
+
+
+__global__ void relabel(){
+
+}
+
 bool LoadCSV(float** data, char* filename, int pRows, int pCols) {
     //assumed file is in same folder, also rename file here
     FILE *file;
@@ -56,8 +69,11 @@ bool LoadCSV(float** data, char* filename, int pRows, int pCols) {
     return true;
 }
 
+
+
 //on the cpu
 int main(void){
+//things on host:testing and training data
     // array that holds all converted training data
     float **training_data = (float **) malloc(MAX_ROWS_TRAINING * sizeof(float *));
     for(int i = 0; i < MAX_ROWS_TRAINING; i++) {
@@ -76,6 +92,7 @@ int main(void){
     }
     printf("Training data loaded. \n");
 
+    //array that holds all converted testing data & alloc space for host and setup input values
     float **testing_data = (float **) malloc(MAX_ROWS_TESTING * sizeof(float *));
     for(int i = 0; i < MAX_ROWS_TESTING; i++) {
         testing_data[i] = (float *) malloc(MAX_COLUMNS_TESTING * sizeof(float));
@@ -92,25 +109,65 @@ int main(void){
         }
     }
     printf("Testing data loaded. \n");
-    //TODO: store the lines in the file as arrays
-    //unparsed_data[0] = [colum1, colum2, column3, .. ,columnN]
 
-    //things on host
-    //things to device
+
+    //array for the betas in all of us
+    float* betas = new float[MAX_COLUMNS_TRAINING];
+
+//things to device: copy of said testing, training data, and beta
+    float **training_devi = (float **) malloc(MAX_ROWS_TRAINING * sizeof(float *));
+    float **testing_devi = (float **) malloc(MAX_ROWS_TESTING * sizeof(float *));
+    float* betas_devi = new float[MAX_COLUMNS_TRAINING];
+
     //used to set size of components
-
-
+    int train_size = MAX_ROWS_TRAINING * MAX_COLUMNS_TRAINING * sizeof(float);
+    int test_size = MAX_ROWS_TESTING * MAX_COLUMNS_TESTING * sizeof(float);
+    int beta_size = MAX_COLUMNS_TRAINING * sizeof(float);
     //alloc space for device, copies of above
-
-    //alloc space for host and setup input values
+    cudaMalloc((void***)&training_devi, train_size);
+    cudaMalloc((void***)&testing_devi, test_size);
+    cudaMalloc((void**)& betas_devi, beta_size);
 
     //copy inputs to device
+    cudaMemcpy(training_devi, training_data, train_size, cudaMemcpyHostToDevice);
+    cudaMemcpy(testing_devi, testing_data, test_size, cudaMemcpyHostToDevice);
+    cudaMemcpy(betas_devi, betas, beta_size, cudaMemcpyHostToDevice);
 
     //launch on gpu
 
+
     //copy result to host
+    cudaMemcpy(betas, betas_devi, beta_size, cudaMemcpyDeviceToHost);
+
 
     //cleanup all the frees
+    //cleaning up on host end
+    for(int i = 0; i < MAX_ROWS_TESTING; i++) {
+      free(testing_data[i]);
+    }
+    free(testing_data);
+
+    for(int i = 0; i < MAX_ROWS_TRAINING; i++) {
+      free(training_data[i]);
+    }
+    free(training_data);
+
+    free(betas);
+
+    //cleaning up on device end
+    for(int i = 0; i < MAX_ROWS_TESTING; i++) {
+      free(testing_devi[i]);
+    }
+    free(testing_devi);
+
+    for(int i = 0; i < MAX_ROWS_TRAINING; i++) {
+      free(training_devi[i]);
+    }
+    free(training_devi);
+
+    free(betas_devi);
+
+
 
     return 0;
 }
