@@ -33,6 +33,11 @@ __global__ void relabel(){
 
 }
 
+//an idea: we send all the releveant data, and trigger the processing
+__global__ void assemble(float** training_devi, float** testing_devi, float* betas_devi){
+
+}
+
 bool LoadCSV(float** data, char* filename, int pRows, int pCols) {
     //assumed file is in same folder, also rename file here
     FILE *file;
@@ -101,13 +106,8 @@ int main(void){
         printf("Failed to load testing data from %s. \n", testing_data_file);
         return 0;
     }
-<<<<<<< HEAD
-    printf("Testing data loaded. \n");
-
-=======
 
     //used to set size of components
->>>>>>> c7622b42b6db3275386aa8f6003aab6d49578e15
 
     //array for the betas in all of us
     float* betas = new float[MAX_COLUMNS_TRAINING];
@@ -132,7 +132,7 @@ int main(void){
     cudaMemcpy(betas_devi, betas, beta_size, cudaMemcpyHostToDevice);
 
     //launch on gpu
-
+    process<<<1,1>>>(training_devi, testing_devi, betas_devi);
 
     //copy result to host
     cudaMemcpy(betas, betas_devi, beta_size, cudaMemcpyDeviceToHost);
