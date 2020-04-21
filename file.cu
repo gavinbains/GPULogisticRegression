@@ -63,7 +63,7 @@ int main(void){
     for(int i = 0; i < MAX_ROWS_TRAINING; i++) {
         training_data[i] = (float *) malloc(MAX_COLUMNS_TRAINING * sizeof(float));
     }
-    printf("Loading training data. \n", );
+    printf("Loading training data. \n");
     if(LoadCSV(training_data, "training_data.csv", MAX_ROWS_TRAINING, MAX_COLUMNS_TRAINING)) {
         for(int i = 0; i < MAX_ROWS_TRAINING; i++) {
             printf("Row %i: ", i );
