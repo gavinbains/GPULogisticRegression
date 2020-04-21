@@ -49,6 +49,9 @@ bool LoadCSV(float** data, char* filename, int pRows, int pCols) {
         for(int col  = 0; col < pCols; col++) {
             col_val = strtok(NULL, deli);
             if(col_val != NULL) {
+                if(row == 0) {
+                    printf("%s \n", col_val);
+                }
                 data[row][col] = atof(col_val);
             }
         }
