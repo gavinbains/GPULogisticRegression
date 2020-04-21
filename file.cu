@@ -80,17 +80,13 @@ int main(void){
         training_data[i] = (float *) malloc(MAX_COLUMNS_TRAINING * sizeof(float));
     }
     printf("Loading training data. \n");
-    if(LoadCSV(training_data, "training_data.csv", MAX_ROWS_TRAINING, MAX_COLUMNS_TRAINING)) {
-        for(int i = 0; i < MAX_ROWS_TRAINING; i++) {
-            printf("Row %i: ", i );
-            for(int j = 0; j < MAX_COLUMNS_TRAINING; j++) {
-                printf("%f, ", training_data[i][j]);
-            }
-            printf("\n");
-            break;
-        }
+    char* training_data_file = "training_data.csv";
+    if(LoadCSV(training_data, training_data_file, MAX_ROWS_TRAINING, MAX_COLUMNS_TRAINING)) {
+        printf("Training data loaded. \n");
+    } else {
+        printf("Failed to load training data from %s. \n", training_data_file);
+        return 0;
     }
-    printf("Training data loaded. \n");
 
     //array that holds all converted testing data & alloc space for host and setup input values
     float **testing_data = (float **) malloc(MAX_ROWS_TESTING * sizeof(float *));
@@ -98,18 +94,20 @@ int main(void){
         testing_data[i] = (float *) malloc(MAX_COLUMNS_TESTING * sizeof(float));
     }
     printf("Loading testing data. \n");
-    if(LoadCSV(testing_data, "testing_data.csv", MAX_ROWS_TESTING, MAX_COLUMNS_TESTING)) {
-        for(int i = 0; i < MAX_ROWS_TESTING; i++) {
-            printf("Row %i: ", i );
-            for(int j = 0; j < MAX_COLUMNS_TESTING; j++) {
-                printf("%f, ", testing_data[i][j]);
-            }
-            printf("\n");
-            break;
-        }
+    char* testing_data_file = "testing_data.csv";
+    if(LoadCSV(testing_data, testing_data_file, MAX_ROWS_TESTING, MAX_COLUMNS_TESTING)) {
+        printf("Testing data loaded. \n");
+    } else {
+        printf("Failed to load testing data from %s. \n", testing_data_file);
+        return 0;
     }
+<<<<<<< HEAD
     printf("Testing data loaded. \n");
 
+=======
+
+    //used to set size of components
+>>>>>>> c7622b42b6db3275386aa8f6003aab6d49578e15
 
     //array for the betas in all of us
     float* betas = new float[MAX_COLUMNS_TRAINING];
