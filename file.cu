@@ -84,11 +84,7 @@ int main(void){
         printf("Failed to load testing data from %s. \n", testing_data_file);
         return 0;
     }
-    //TODO: store the lines in the file as arrays
-    //unparsed_data[0] = [colum1, colum2, column3, .. ,columnN]
 
-    //things on host
-    //things to device
     //used to set size of components
 
 
