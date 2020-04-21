@@ -9,16 +9,19 @@
 
 
 //FILE IO RELATED
-//max number of lines
-#define MAX_ROWS 17012
-// max number of columns/features
-#define MAX_COLUMNS 26
+//max number of lines in the training dataset
+#define MAX_ROWS_TRAINING 17012
+// max number of columns/features in the training dataset
+#define MAX_COLUMNS_TRAINING 26
+// max number of rows in the testing dataset
+#define MAX_ROWS_TESTING 4252
+// max number of columns in the testing data
+#define MAX_COLUMNS_TESTING 26
 //max number of characters/line
 #define MAX_CHAR 300
 
-bool LoadCSV(float** training_data) {
+bool LoadCSV(float** data, char* filename, int pRows, int pCols) {
     //assumed file is in same folder, also rename file here
-    char *filename = "testing_data.csv";
     FILE *file;
     file = fopen(filename, "r+");
     if(!file) {
@@ -26,8 +29,8 @@ bool LoadCSV(float** training_data) {
         return false;
     }
     // unparsed data straight from file
-    char unparsed_data[MAX_ROWS+10][MAX_CHAR+10];
-    char copying[MAX_ROWS+10];
+    char unparsed_data[pRows+10][pCols+10];
+    char copying[pRows+10];
 
     //keep track which row we are on
     int ltracker=0;
@@ -41,12 +44,12 @@ bool LoadCSV(float** training_data) {
     char* col_val;
     const char deli[2]=","; // delimiter
     // parses each value in each column per row
-    for (int row = 0; row < MAX_ROWS; row++){
+    for (int row = 0; row < pRows; row++){
         col_val = strtok(unparsed_data[row], deli);
-        for(int col  = 0; col < MAX_COLUMNS; col++) {
+        for(int col  = 0; col < pCols; col++) {
             col_val = strtok(NULL, deli);
             if(col_val != NULL) {
-                training_data[row][col] = atof(col_val);
+                data[row][col] = atof(col_val);
             }
         }
     }
@@ -56,16 +59,15 @@ bool LoadCSV(float** training_data) {
 //on the cpu
 int main(void){
     // array that holds all converted training data
-    float **train_data = (float **) malloc(MAX_ROWS * sizeof(float *));
-    for(int i = 0; i < MAX_ROWS; i++) {
-        train_data[i] = (float *) malloc(MAX_COLUMNS * sizeof(float));
+    float **training_data = (float **) malloc(MAX_ROWS_TRAINING * sizeof(float *));
+    for(int i = 0; i < MAX_ROWS_TRAINING; i++) {
+        training_data[i] = (float *) malloc(MAX_COLUMNS_TRAINING * sizeof(float));
     }
-
-    if(LoadCSV(train_data)) {
-        for(int i = 0; i < MAX_ROWS; i++) {
+    LoadCSV(training_data, "training_data.csv", MAX_ROWS_TRAINING, MAX_COLUMNS_TRAINING) {
+        for(int i = 0; i < MAX_ROWS_TRAINING; i++) {
             printf("Row %i: ", i );
-            for(int j = 0; j < MAX_COLUMNS; j++) {
-                printf("%f, ", train_data[i][j]);
+            for(int j = 0; j < MAX_COLUMNS_TRAINING; j++) {
+                printf("%f, ", training_data[i][j]);
             }
             printf("\n");
             break;
