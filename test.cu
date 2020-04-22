@@ -7,34 +7,52 @@
 
 #define RESULT_SIZE 12
 
+__constant__ int features = 5;
+
 __global__ void SetZero(int* result) {
     int index = blockIdx.x;
     result[index] = 0;
 }
 
+__global__ void mult(int* results, int* data, int* vec) {
+    int index = blockIdx.x;
+    int result_val = 0;
+    for(int i = 0; i < features; i++) {
+        result_val += vec[i] * data[(index * features) + i];
+    }
+    results[index] = result_val;
+}
+
 int main() {
     // arr exists on the CPU/host
-    int* arr = (int*) malloc(sizeof(int) * RESULT_SIZE);
-    for(int i = 0; i < RESULT_SIZE; i++) {
-        arr[i] = -1;
+    int rows = 6;
+    int* vec = (int*) malloc(sizeof(int) * features * 1);
+    for(int i = 0; i < features; i++) {
+        vec[i] = i;
     }
-    int* result = (int*) malloc(sizeof(int)*RESULT_SIZE);
-    // gpu_arr exists on the GPU/device
-    int* gpu_arr;
-    cudaMalloc((void**)&gpu_arr, sizeof(int)*RESULT_SIZE);
-    // copy arr into gpu_arr
-    cudaMemcpy(gpu_arr, arr, sizeof(int) * RESULT_SIZE, cudaMemcpyHostToDevice);
+    int* data = (int*) malloc(sizeof(int) * features * rows);
+    for(int i = 0; i < features * rows; i++) {
+        data[i] = 1;
+    }
 
-    dim3 dimGrid(12); // gives 12 "cores"? Can I do this?
-    SetZero<<<dimGrid, 1>>>(gpu_arr);
+    int* result = (int*) malloc(sizeof(int)* features);
+    // copy vector and data to gpu
+    int* gpu_vec;
+    int* gpu_data;
+    int* gpu_result;
+    cudaMalloc((void**)&gpu_vec, sizeof(int) * features);
+	cudaMalloc((void**)&gpu_data, sizeof(int) * features * rows);
+	cudaMalloc((void**)&gpu_result, sizeof(int) * features);
+
+    cudaMemcpy(gpu_vec, vec, sizeof(int) * features, cudaMemcpyHostToDevice);
+    cudaMemcpy(gpu_data, data, sizeof(int) * features * rows cudaMemcpyHostToDevice);
+
+    dim3 grid(rows);
+    mult<<<rows, 1>>>(gpu_result, gpu_data, gpu_vec);
     // copy back to device
-    cudaMemcpy(arr, gpu_arr, sizeof(int) * RESULT_SIZE, cudaMemcpyDeviceToHost);
+    cudaMemcpy(result, gpu_result, sizeof(int) * features, cudaMemcpyDeviceToHost);
     // check all of our result
-    for(int i = 0; i < RESULT_SIZE; i++) {
-        printf("%d:", i);
-        printf("%d \n", arr[i]);
+    for(int i = 0; i < features; i++) {
+        printf("%d \n", result[i]);
     }
-    free(arr);
-    free(result);
-    cudaFree(gpu_arr);
 }
