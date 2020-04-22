@@ -10,7 +10,7 @@
 
 //FILE IO RELATED
 //max number of lines in the training dataset
-#define MAX_ROWS_TRAINING 17012
+#define MAX_ROWS_TRAINING 16896
 // max number of columns/features in the training dataset
 #define MAX_COLUMNS_TRAINING 26
 // max number of rows in the testing dataset
@@ -21,8 +21,11 @@
 #define MAX_CHAR 300
 
 __constant__ int features = 26;
+__constant__ int num_rows = 16896;
 
-__global__ void logistic_func(float* log_func_v, float* betas, float* data, int n_rows) {
+__device__ float d_cost;
+// parallelized across the rows
+__global__ void logistic_func(float* log_func_v, float* betas, float* data) {
     int row_index = blockIdx.x * blockDim.x + threadIdx.x;
     float temp = 0;
     for(int j = 0; j < features; j++) {
@@ -31,26 +34,39 @@ __global__ void logistic_func(float* log_func_v, float* betas, float* data, int 
     log_func_v[row_index] = 1.0 / (1.0 + expf(-1.0 * temp))
 }
 
-__global__ void cost_func(float* total, float* betas, float* data, int* yvec,
-    float* log_func_v, int n_rows) {
+// parallelized across the features
+__global__ void log_gradient(float* log_func_v,  float* gradient, float* betas,
+    float* data, int* yvec) {
+    // the logistic function itself has been pulled out
+    int feature_index = blockIdx.x * blockDim.x + threadIdx.x;
+    float temp = 0.0f;
+    for(int i < 0; i < num_rows; i++) {
+        temp += (log_func_v[i] - yvec[i]) * data[(i * features) + feature_index];
+    }
+    gradient[feature_index] = temp;
+}
+
+// parallelized across features
+__global__ void cost_func(float* betas, float* data, int* yvec,
+    float* log_func_v) {
         float local_total = 0.0f;
         int feature_index = blockIdx.x * blockDim.x + threadIdx.x;
-        for(int i = 0; i < n_rows; i++) {
+        for(int i = 0; i < num_rows; i++) {
             float step1 = yvec[i] * logf(log_func_v[i]);
             float step2 = (1 - yvec[i]) * logf(1 - log_func_v[i]);
             local_total += step1 - step2;
         }
-        *total = local_total;
+        d_cost = local_total;
 }
 
-__device__ void extract_yvec(float** data, int* yvec, int n_rows) {
+__host__ void extract_yvec(float** data, int* yvec, int n_rows) {
     for(int i = 0; i < n_rows; i++) {
         yvec[i] = data[i][0]; // extract predictor
         data[i][0] = 1; // pads data
     }
 }
 
-__device__ void relabel_yvec(int* yvec, int n_rows, int modelID, int n_models) {
+__host__ void relabel_yvec(int* yvec, int n_rows, int modelID, int n_models) {
     float high = 365.0f / n_models * (modelID + 1);
     float low = 365.0f / n_models * (modelID - 1);
     for(int i = 0; i < n_rows; i++) {
@@ -62,6 +78,72 @@ __device__ void relabel_yvec(int* yvec, int n_rows, int modelID, int n_models) {
         }
         yvec[i] = val;
     }
+}
+
+__host__ void initialize_betas(float* betas) {
+    for(int i = 0; i < MAX_COLUMNS_TRAINING; i++) {
+        betas[i] = 0.0f;
+    }
+}
+
+//note: removed cost as a parameter
+__host__ float grad_desc( int* yvec, float* betas, float* data, float lr, int max_iters) {
+    // n_rows = MAX_ROWS_TRAINING, features defined for both GPU and CPU in constants
+    int num_iter = 1;
+    // GPU memory allocation
+    float* gpu_gradient;
+    float* gpu_betas;
+    float* gpu_data;
+    float* gpu_yvec;
+    float* gpu_log_func_v;
+    // allocate memory onboard the GPU
+    cudaMalloc((void**) &gpu_gradient, sizeof(float) * MAX_COLUMNS_TRAINING);
+    cudaMalloc((void**) &gpu_betas, sizeof(float) * MAX_COLUMNS_TRAINING);
+    cudaMalloc((void**) &gpu_data, sizeof(float) * MAX_COLUMNS_TRAINING * MAX_ROWS_TRAINING);
+    cudaMalloc((void**) &gpu_yvec, sizeof(int) * MAX_ROWS_TRAINING);
+    cudaMalloc((void**) &gpu_log_func_v, sizeof(float) * MAX_ROWS_TRAINING);
+    // upload data and yvec; these properties do not change and thus do not need
+    // to be reuploaded on each iteration!
+    cudaMemcpy(gpu_data, data, sizeof(float) * MAX_COLUMNS_TESTING * MAX_ROWS_TESTING, cudaMemcpyHostToDevice);
+    cudaMemcpy(gpu_yvec, yvec, sizeof(int) * MAX_ROWS_TRAINING, cudaMemcpyHostToDevice);
+
+    float* gradient = (float*) malloc(sizeof(float) * MAX_COLUMNS_TRAINING);
+    for(int i = 0; i < max_iters; i++) {
+
+        // upload beta, data, and yvec values into the GPU
+        cudaMemcpy(gpu_betas, betas, sizeof(float) * MAX_COLUMNS_TESTING, cudaMemcpyHostToDevice);
+        // launch logistic_func kernel
+        logistic_func<<</*for now!*/33, 512>>>(gpu_log_func_v, gpu_betas,
+            gpu_data);
+        cudaDeviceSychronize();
+        log_gradient<<</*for now!*/1, MAX_COLUMNS_TRAINING>>>(gpu_log_func_v,
+            gpu_gradient, gpu_betas, gpu_data, gpu_yvec);
+        // copy new gradient values
+        cudaMemcpy(gradient, gpu_gradient, sizeof(float) * MAX_COLUMNS_TRAINING, cudaMemcpyDeviceToHost);
+        // update betas
+        for(int b = 0; b < MAX_COLUMNS_TRAINING; b++) {
+            betas[b] -= lr * gradient[b];
+        }
+        num_iter++;
+    }
+    cudaMemcpy(gpu_betas, betas, sizeof(float) * MAX_COLUMNS_TESTING, cudaMemcpyHostToDevice);
+    logistic_func<<</*for now!*/33, 512>>>(gpu_log_func_v, gpu_betas, gpu_data);
+    cudaDeviceSychronize();
+    cost_func<<</*for now!*/ 1, MAX_COLUMNS_TRAINING>>>(gpu_betas, gpu_data, gpu_yvec, gpu_log_func_v);
+    typof(d_cost) h_cost;
+    cudaMemcpyFromSymbol(&h_cost, "d_cost", sizeof(h_cost), 0, cudaMemcpyDeviceToHost);
+
+    //copying betas from gpu to host
+    cudaMemcpy(gpu_betas, betas, sizeof(float) * MAX_COLUMNS_TRAINING, cudaMemcpyDeviceToHost );
+
+    // free all your memory
+    free(gradient);
+    cudaFree(gpu_gradient);
+    cudaFree(gpu_betas);
+    cudaFree(gpu_data);
+    cudaFree(gpu_yvec);
+    cudaFree(gpu_log_func_v);
+    return (float) h_cost;
 }
 
 bool LoadCSV(float** data, char* filename, int pRows, int pCols) {
@@ -100,6 +182,14 @@ bool LoadCSV(float** data, char* filename, int pRows, int pCols) {
     return true;
 }
 
+__host__ void linearizeArray(float** input, float* output,  int row, int col) {
+  for(int i=0; i < row; i++){
+    for(int j=0; j<col; j++){
+        output[i*features+j] = input[i][j];
+    }
+  }
+}
+
 
 
 //on the cpu
@@ -133,6 +223,42 @@ int main(void){
         return 0;
     }
     printf("Actual logistic regression. \n");
+
+    int modelID = 1, n_models = 2;
+    float lr 0.01;
+    int max_iters = 10000;
+    printf("--Extracting and re-labelling train predictor...");
+    int* yvec = (int * ) malloc(sizeof(int) * MAX_ROWS_TRAINING);
+    extract_yvec(training_data, yvec, MAX_ROWS_TRAINING);
+    relabel_yvec(yvec, MAX_ROWS_TRAINING, modelID, n_models);
+    printf(" done!-- \n");
+
+    // linearize the data
+    float * train_final = (float *) malloc(MAX_COLUMNS_TRAINING * MAX_ROWS_TRAINING * sizeof(float));
+    linearizeArray(training_data, train_final, MAX_ROWS_TRAINING, MAX_COLUMNS_TRAINING );
+    float * test_final = (float *) malloc(MAX_COLUMNS_TESTING * MAX_ROWS_TESTING * sizeof(float));
+    linearizeArray(testing_data, test_final, MAX_ROWS_TESTING, MAX_COLUMNS_TESTING);
+
+    printf("--Training model...");
+    float* betas = (float*) malloc(sizeof(float) * MAX_COLUMNS_TESTING);
+    initialize_betas(betas);
+
+    timet start, end;
+    time(&start);
+    float optimal_cost = grad_desc(yvec, betas, train_final, lr, max_iters );
+    time(&end);
+
+    printf("done! ------");
+    int time_taken = int(end-start);
+
+    printf("Training time: %i", time_taken);
+    printf("Cost at solution %f", optimal_cost);
+
+
+
+
+
+
 
 
     return 0;
