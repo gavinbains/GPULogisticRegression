@@ -20,22 +20,48 @@
 //max number of characters/line
 #define MAX_CHAR 300
 
-__global__ void grad_desc(){
+__constant__ int features = 26;
 
+__global__ void logistic_func(float* log_func_v, float* betas, float* data, int n_rows) {
+    int row_index = blockIdx.x * blockDim.x + threadIdx.x;
+    float temp = 0;
+    for(int j = 0; j < features; j++) {
+        temp += betas[j] + data[(row_index * features) + j];
+    }
+    log_func_v[row_index] = 1.0 / (1.0 + expf(-1.0 * temp))
 }
 
-__global__ void extract(){
-
+__global__ void cost_func(float* total, float* betas, float* data, int* yvec,
+    float* log_func_v, int n_rows) {
+        float local_total = 0.0f;
+        int feature_index = blockIdx.x * blockDim.x + threadIdx.x;
+        for(int i = 0; i < n_rows; i++) {
+            float step1 = yvec[i] * logf(log_func_v[i]);
+            float step2 = (1 - yvec[i]) * logf(1 - log_func_v[i]);
+            local_total += step1 - step2;
+        }
+        *total = local_total;
 }
 
-
-__global__ void relabel(){
-
+__device__ void extract_yvec(float** data, int* yvec, int n_rows) {
+    for(int i = 0; i < n_rows; i++) {
+        yvec[i] = data[i][0]; // extract predictor
+        data[i][0] = 1; // pads data
+    }
 }
 
-//an idea: we send all the releveant data, and trigger the processing
-__global__ void assemble(float** training_devi, float** testing_devi, float* betas_devi){
-
+__device__ void relabel_yvec(int* yvec, int n_rows, int modelID, int n_models) {
+    float high = 365.0f / n_models * (modelID + 1);
+    float low = 365.0f / n_models * (modelID - 1);
+    for(int i = 0; i < n_rows; i++) {
+        int val = yvec[i];
+        if(val >= low && val < high) {
+            val = 1;
+        } else {
+            val = 0;
+        }
+        yvec[i] = val;
+    }
 }
 
 bool LoadCSV(float** data, char* filename, int pRows, int pCols) {
@@ -106,65 +132,7 @@ int main(void){
         printf("Failed to load testing data from %s. \n", testing_data_file);
         return 0;
     }
-
-    //used to set size of components
-
-    //array for the betas in all of us
-    float* betas = new float[MAX_COLUMNS_TRAINING];
-
-//things to device: copy of said testing, training data, and beta
-    float **training_devi = (float **) malloc(MAX_ROWS_TRAINING * sizeof(float *));
-    float **testing_devi = (float **) malloc(MAX_ROWS_TESTING * sizeof(float *));
-    float* betas_devi = new float[MAX_COLUMNS_TRAINING];
-
-    //used to set size of components
-    int train_size = MAX_ROWS_TRAINING * MAX_COLUMNS_TRAINING * sizeof(float);
-    int test_size = MAX_ROWS_TESTING * MAX_COLUMNS_TESTING * sizeof(float);
-    int beta_size = MAX_COLUMNS_TRAINING * sizeof(float);
-    //alloc space for device, copies of above
-    cudaMalloc((void***)&training_devi, train_size);
-    cudaMalloc((void***)&testing_devi, test_size);
-    cudaMalloc((void**)& betas_devi, beta_size);
-
-    //copy inputs to device
-    cudaMemcpy(training_devi, training_data, train_size, cudaMemcpyHostToDevice);
-    cudaMemcpy(testing_devi, testing_data, test_size, cudaMemcpyHostToDevice);
-    cudaMemcpy(betas_devi, betas, beta_size, cudaMemcpyHostToDevice);
-
-    //launch on gpu
-    process<<<1,1>>>(training_devi, testing_devi, betas_devi);
-
-    //copy result to host
-    cudaMemcpy(betas, betas_devi, beta_size, cudaMemcpyDeviceToHost);
-
-
-    //cleanup all the frees
-    //cleaning up on host end
-    for(int i = 0; i < MAX_ROWS_TESTING; i++) {
-      free(testing_data[i]);
-    }
-    free(testing_data);
-
-    for(int i = 0; i < MAX_ROWS_TRAINING; i++) {
-      free(training_data[i]);
-    }
-    free(training_data);
-
-    free(betas);
-
-    //cleaning up on device end
-    for(int i = 0; i < MAX_ROWS_TESTING; i++) {
-      free(testing_devi[i]);
-    }
-    free(testing_devi);
-
-    for(int i = 0; i < MAX_ROWS_TRAINING; i++) {
-      free(training_devi[i]);
-    }
-    free(training_devi);
-
-    free(betas_devi);
-
+    printf("Actual logistic regression. \n");
 
 
     return 0;
