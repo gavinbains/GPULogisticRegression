@@ -156,7 +156,7 @@ bool LoadCSV(float** data, char* filename, int pRows, int pCols) {
 __host__ void linearizeArray(float** input, float* output,  int row, int col) {
   for(int i=0; i < row; i++){
     for(int j=0; j<col; j++){
-        output[i*features+j] = input[i][j];
+        output[i*col+j] = input[i][j];
     }
   }
 }
@@ -266,7 +266,7 @@ int main(void){
 
     printf("Training time: %i ", time_taken);
     printf("--Printing betas...\n");
-    for(int i=0; i< features; i++){
+    for(int i=0; i< MAX_COLUMNS_TESTING; i++){
         printf("%f, ", betas[i]);
     }
     printf("\nEnd printing betas--\n");
@@ -276,7 +276,7 @@ int main(void){
     printf("--- Extracting and re-labelling test predictor...");
 
     int* yvec_test = (int * ) malloc(sizeof(int) * MAX_ROWS_TESTING);
-    extract_yvec(test_final, yvec_test, MAX_ROWS_TESTING);
+    extract_yvec(testing_data, yvec_test, MAX_ROWS_TESTING);
     relabel_yvec(yvec_test, MAX_ROWS_TESTING, modelID, n_models);
     printf(" done! --- ");
 
@@ -290,4 +290,4 @@ int main(void){
     free(yvec_test);
     free(betas);
     return 0;
-ource /usr/usc/cuda/default/setup.sh
+}
