@@ -236,6 +236,7 @@ int main(void){
         printf("Failed to load testing data from %s. \n", testing_data_file);
         return 0;
     }
+    return 0;
     printf("Actual logistic regression. \n");
     int modelID = 1, n_models = 2;
     float lr = 0.01;
