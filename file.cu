@@ -117,7 +117,7 @@ __host__ void grad_desc( int* yvec, float* betas, float* data, float lr, int max
     cudaFree(gpu_log_func_v);
 }
 
-bool LoadCSV(float** data, char* filename, int pRows, int pCols) {
+bool LoadCSV(float** data, char* filename, int actual_rows, int parsed_rows, int pCols) {
     //assumed file is in same folder, also rename file here
     FILE *file;
     file = fopen(filename, "r+");
@@ -126,8 +126,8 @@ bool LoadCSV(float** data, char* filename, int pRows, int pCols) {
         return false;
     }
     // unparsed data straight from file
-    char unparsed_data[pRows+10][MAX_CHAR+10];
-    char copying[pRows+10];
+    char unparsed_data[actual_rows+10][MAX_CHAR+10];
+    char copying[actual_rows+10];
 
     //keep track which row we are on
     int ltracker=0;
@@ -141,7 +141,7 @@ bool LoadCSV(float** data, char* filename, int pRows, int pCols) {
     char* col_val;
     const char deli[2]=","; // delimiter
     // parses each value in each column per row
-    for (int row = 0; row < pRows; row++){
+    for (int row = 0; row < parsed_rows; row++){
         col_val = strtok(unparsed_data[row], deli);
         for(int col  = 0; col < pCols; col++) {
             col_val = strtok(NULL, deli);
@@ -216,7 +216,7 @@ int main(void){
     }
     printf("Loading training data. \n");
     char* training_data_file = "training_data.csv";
-    if(LoadCSV(training_data, training_data_file, MAX_ROWS_TRAINING, MAX_COLUMNS_TRAINING)) {
+    if(LoadCSV(training_data, training_data_file, 17012, MAX_ROWS_TRAINING, MAX_COLUMNS_TRAINING)) {
         printf("Training data loaded. \n");
     } else {
         printf("Failed to load training data from %s. \n", training_data_file);
@@ -230,7 +230,7 @@ int main(void){
     }
     printf("Loading testing data. \n");
     char* testing_data_file = "testing_data.csv";
-    if(LoadCSV(testing_data, testing_data_file, MAX_ROWS_TESTING, MAX_COLUMNS_TESTING)) {
+    if(LoadCSV(testing_data, testing_data_file, 4252, MAX_ROWS_TESTING, MAX_COLUMNS_TESTING)) {
         printf("Testing data loaded. \n");
     } else {
         printf("Failed to load testing data from %s. \n", testing_data_file);
