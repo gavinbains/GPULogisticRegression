@@ -4,10 +4,6 @@
 #include <cublas.h>
 #include <time.h>
 
-//define N
-//define threads/block
-
-
 //FILE IO RELATED
 //max number of lines in the training dataset
 #define MAX_ROWS_TRAINING 16896
@@ -23,7 +19,6 @@
 __constant__ int features = 26;
 __constant__ int num_rows = 16896;
 
-__device__ float d_cost;
 // parallelized across the rows
 __global__ void logistic_func(float* log_func_v, float* betas, float* data) {
     int row_index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -31,7 +26,7 @@ __global__ void logistic_func(float* log_func_v, float* betas, float* data) {
     for(int j = 0; j < features; j++) {
         temp += betas[j] + data[(row_index * features) + j];
     }
-    log_func_v[row_index] = 1.0 / (1.0 + expf(-1.0 * temp))
+    log_func_v[row_index] = 1.0 / (1.0 + expf(-1.0 * temp));
 }
 
 // parallelized across the features
@@ -40,23 +35,10 @@ __global__ void log_gradient(float* log_func_v,  float* gradient, float* betas,
     // the logistic function itself has been pulled out
     int feature_index = blockIdx.x * blockDim.x + threadIdx.x;
     float temp = 0.0f;
-    for(int i < 0; i < num_rows; i++) {
+    for(int i = 0; i < num_rows; i++) {
         temp += (log_func_v[i] - yvec[i]) * data[(i * features) + feature_index];
     }
     gradient[feature_index] = temp;
-}
-
-// parallelized across features
-__global__ void cost_func(float* betas, float* data, int* yvec,
-    float* log_func_v) {
-        float local_total = 0.0f;
-        int feature_index = blockIdx.x * blockDim.x + threadIdx.x;
-        for(int i = 0; i < num_rows; i++) {
-            float step1 = yvec[i] * logf(log_func_v[i]);
-            float step2 = (1 - yvec[i]) * logf(1 - log_func_v[i]);
-            local_total += step1 - step2;
-        }
-        d_cost = local_total;
 }
 
 __host__ void extract_yvec(float** data, int* yvec, int n_rows) {
@@ -88,13 +70,13 @@ __host__ void initialize_betas(float* betas) {
 
 //note: removed cost as a parameter
 
-__host__ float grad_desc( int* yvec, float* betas, float* data, float lr, int max_iters) {
+__host__ void grad_desc( int* yvec, float* betas, float* data, float lr, int max_iters) {
     // n_rows = MAX_ROWS_TRAINING, features defined for both GPU and CPU in constants
     // GPU memory allocation
     float* gpu_gradient;
     float* gpu_betas;
     float* gpu_data;
-    float* gpu_yvec;
+    int* gpu_yvec;
     float* gpu_log_func_v;
     // allocate memory onboard the GPU
     cudaMalloc((void**) &gpu_gradient, sizeof(float) * MAX_COLUMNS_TRAINING);
@@ -115,7 +97,7 @@ __host__ float grad_desc( int* yvec, float* betas, float* data, float lr, int ma
         // launch logistic_func kernel
         logistic_func<<</*for now!*/33, 512>>>(gpu_log_func_v, gpu_betas,
             gpu_data);
-        cudaDeviceSychronize();
+        cudaDeviceSynchronize();
         log_gradient<<</*for now!*/1, MAX_COLUMNS_TRAINING>>>(gpu_log_func_v,
             gpu_gradient, gpu_betas, gpu_data, gpu_yvec);
         // copy new gradient values
@@ -133,7 +115,6 @@ __host__ float grad_desc( int* yvec, float* betas, float* data, float lr, int ma
     cudaFree(gpu_data);
     cudaFree(gpu_yvec);
     cudaFree(gpu_log_func_v);
-    return (float) h_cost;
 }
 
 bool LoadCSV(float** data, char* filename, int pRows, int pCols) {
@@ -196,11 +177,11 @@ __host__ float predict(float* betas, float* data, int* yvec) {
     cudaMemcpy(gpu_betas, betas, sizeof(float) * MAX_COLUMNS_TESTING, cudaMemcpyHostToDevice);
     logistic_func<<<8, 512>>>(gpu_log_func_v, gpu_betas, gpu_test_data);
     // copy back down the log_func_v
-    cudaMemcpy(log_func_v, gpu_log_func_v, sizeof(float) * MAX_ROWS_TESTING);
+    cudaMemcpy(log_func_v, gpu_log_func_v, sizeof(float) * MAX_ROWS_TESTING, cudaMemcpyDeviceToHost);
 
    //all the frees
    cudaFree(gpu_log_func_v);
-   cudaFree(gru_betas);
+   cudaFree(gpu_betas);
    cudaFree(gpu_test_data);
 
 
@@ -275,21 +256,20 @@ int main(void){
     float* betas = (float*) malloc(sizeof(float) * MAX_COLUMNS_TESTING);
     initialize_betas(betas);
 
-    timet start, end;
+    time_t start, end;
     time(&start);
-    float optimal_cost = grad_desc(yvec, betas, train_final, lr, max_iters );
+    grad_desc(yvec, betas, train_final, lr, max_iters );
     time(&end);
 
     printf("done! ------");
     int time_taken = int(end-start);
 
     printf("Training time: %i ", time_taken);
-    printf("Cost at solution %f \n", optimal_cost);
-    printf("--Printing betas...\n", );
+    printf("--Printing betas...\n");
     for(int i=0; i< features; i++){
         printf("%f, ", betas[i]);
     }
-    printf("\nEnd printing betas--\n", );
+    printf("\nEnd printing betas--\n");
     free(train_final);
     free(yvec);
 
@@ -310,4 +290,4 @@ int main(void){
     free(yvec_test);
     free(betas);
     return 0;
-}
+ource /usr/usc/cuda/default/setup.sh
