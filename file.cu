@@ -14,7 +14,7 @@
 // max number of columns/features in the training dataset
 #define MAX_COLUMNS_TRAINING 26
 // max number of rows in the testing dataset
-#define MAX_ROWS_TESTING 4252
+#define MAX_ROWS_TESTING 4096
 // max number of columns in the testing data
 #define MAX_COLUMNS_TESTING 26
 //max number of characters/line
@@ -87,9 +87,9 @@ __host__ void initialize_betas(float* betas) {
 }
 
 //note: removed cost as a parameter
+
 __host__ float grad_desc( int* yvec, float* betas, float* data, float lr, int max_iters) {
     // n_rows = MAX_ROWS_TRAINING, features defined for both GPU and CPU in constants
-    int num_iter = 1;
     // GPU memory allocation
     float* gpu_gradient;
     float* gpu_betas;
@@ -124,19 +124,9 @@ __host__ float grad_desc( int* yvec, float* betas, float* data, float lr, int ma
         for(int b = 0; b < MAX_COLUMNS_TRAINING; b++) {
             betas[b] -= lr * gradient[b];
         }
-        num_iter++;
     }
-    cudaMemcpy(gpu_betas, betas, sizeof(float) * MAX_COLUMNS_TESTING, cudaMemcpyHostToDevice);
-    logistic_func<<</*for now!*/33, 512>>>(gpu_log_func_v, gpu_betas, gpu_data);
-    cudaDeviceSychronize();
-    cost_func<<</*for now!*/ 1, MAX_COLUMNS_TRAINING>>>(gpu_betas, gpu_data, gpu_yvec, gpu_log_func_v);
-    typof(d_cost) h_cost;
-    cudaMemcpyFromSymbol(&h_cost, "d_cost", sizeof(h_cost), 0, cudaMemcpyDeviceToHost);
-
-    //copying betas from gpu to host
-    cudaMemcpy(gpu_betas, betas, sizeof(float) * MAX_COLUMNS_TRAINING, cudaMemcpyDeviceToHost );
-
     // free all your memory
+
     free(gradient);
     cudaFree(gpu_gradient);
     cudaFree(gpu_betas);
@@ -191,6 +181,49 @@ __host__ void linearizeArray(float** input, float* output,  int row, int col) {
 }
 
 
+//TODO predict
+__host__ float predict(float* betas, float* data, int* yvec) {
+    float* log_func_v = (float*) malloc(sizeof(float) * MAX_ROWS_TESTING);
+
+    float* gpu_log_func_v;
+    float* gpu_test_data;
+    float* gpu_betas;
+    cudaMalloc((void**)&gpu_log_func_v, sizeof(float) * MAX_ROWS_TESTING);
+    cudaMalloc((void**)&gpu_test_data, sizeof(float) * MAX_COLUMNS_TESTING * MAX_ROWS_TESTING);
+    cudaMalloc((void**)&gpu_betas, sizeof(float) * MAX_COLUMNS_TESTING);
+
+    cudaMemcpy(gpu_test_data, data, sizeof(float) * MAX_COLUMNS_TESTING * MAX_ROWS_TESTING, cudaMemcpyHostToDevice);
+    cudaMemcpy(gpu_betas, betas, sizeof(float) * MAX_COLUMNS_TESTING, cudaMemcpyHostToDevice);
+    logistic_func<<<8, 512>>>(gpu_log_func_v, gpu_betas, gpu_test_data);
+    // copy back down the log_func_v
+    cudaMemcpy(log_func_v, gpu_log_func_v, sizeof(float) * MAX_ROWS_TESTING);
+
+   //all the frees
+   cudaFree(gpu_log_func_v);
+   cudaFree(gru_betas);
+   cudaFree(gpu_test_data);
+
+
+    float threshold_step = 0.1;
+    float optimal_correct = 0;
+    for(int t = 0; t <= 10; t++) {
+        float threshold = threshold_step * t;
+        float correct = 0.0;
+        for(int i = 0; i< MAX_ROWS_TESTING; i++){
+            if((yvec[i] == 0 && log_func_v[i] <= threshold)||(yvec[i] == 1 && log_func_v[i] > threshold)){
+                correct++;
+            }
+        }
+        float percent_correct = correct/MAX_ROWS_TESTING * 100;
+        if(percent_correct > optimal_correct){
+            optimal_correct = percent_correct;
+        }
+    }
+    free(log_func_v);
+
+    return optimal_correct;
+}
+
 
 //on the cpu
 int main(void){
@@ -223,9 +256,8 @@ int main(void){
         return 0;
     }
     printf("Actual logistic regression. \n");
-
     int modelID = 1, n_models = 2;
-    float lr 0.01;
+    float lr = 0.01;
     int max_iters = 10000;
     printf("--Extracting and re-labelling train predictor...");
     int* yvec = (int * ) malloc(sizeof(int) * MAX_ROWS_TRAINING);
@@ -251,15 +283,31 @@ int main(void){
     printf("done! ------");
     int time_taken = int(end-start);
 
-    printf("Training time: %i", time_taken);
-    printf("Cost at solution %f", optimal_cost);
+    printf("Training time: %i ", time_taken);
+    printf("Cost at solution %f \n", optimal_cost);
+    printf("--Printing betas...\n", );
+    for(int i=0; i< features; i++){
+        printf("%f, ", betas[i]);
+    }
+    printf("\nEnd printing betas--\n", );
+    free(train_final);
+    free(yvec);
 
+    printf("--- Extracting and re-labelling test predictor...");
 
+    int* yvec_test = (int * ) malloc(sizeof(int) * MAX_ROWS_TESTING);
+    extract_yvec(test_final, yvec_test, MAX_ROWS_TESTING);
+    relabel_yvec(yvec_test, MAX_ROWS_TESTING, modelID, n_models);
+    printf(" done! --- ");
 
+    printf("--- Testing model...");
+    //running predict
+    float percent_correct = predict(betas, test_final, yvec_test);
+    printf(" done");
+    printf("Percent correct: %f %", percent_correct);
 
-
-
-
-
+    free(test_final);
+    free(yvec_test);
+    free(betas);
     return 0;
 }
