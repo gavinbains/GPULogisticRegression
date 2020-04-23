@@ -4,17 +4,20 @@
 #include <cublas.h>
 #include <time.h>
 
+
+//TODO: change every row test/train to be from parameter
 //FILE IO RELATED
 //max number of lines in the training dataset
-#define MAX_ROWS_TRAINING 16896
+//#define MAX_ROWS_TRAINING 16896
 // max number of columns/features in the training dataset
 #define MAX_COLUMNS_TRAINING 26
 // max number of rows in the testing dataset
-#define MAX_ROWS_TESTING 4096
+//#define MAX_ROWS_TESTING 4096
 // max number of columns in the testing data
 #define MAX_COLUMNS_TESTING 26
 //max number of characters/line
 #define MAX_CHAR 300
+#define n_models 12
 
 __constant__ int features = 26;
 __constant__ int num_rows = 16896;
@@ -205,90 +208,110 @@ __host__ float predict(float* betas, float* data, int* yvec) {
     return optimal_correct;
 }
 
+__global__ void setup(int train_row, int test_row ,char* train_name, char** test_name, char* testing_data, char** training_data){
+
+  int MAX_ROWS_TRAINING = train_row;
+  int MAX_ROWS_TESTING = test_row;
+
+  // array that holds all converted training data
+  //float **training_data = (float **) malloc(MAX_ROWS_TRAINING * sizeof(float *));
+  for(int i = 0; i < MAX_ROWS_TRAINING; i++) {
+      training_data[i] = (float *) malloc(MAX_COLUMNS_TRAINING * sizeof(float));
+  }
+  printf("Loading training data. \n");
+  //char* training_data_file = "training_data.csv";
+  char*training_data_file = train_name;
+  if(LoadCSV(training_data, training_data_file, 17012, MAX_ROWS_TRAINING, MAX_COLUMNS_TRAINING)) {
+      printf("Training data loaded. \n");
+  } else {
+      printf("Failed to load training data from %s. \n", training_data_file);
+      return 0;
+  }
+
+  //array that holds all converted testing data & alloc space for host and setup input values
+  //float **testing_data = (float **) malloc(MAX_ROWS_TESTING * sizeof(float *));
+  for(int i = 0; i < MAX_ROWS_TESTING; i++) {
+      testing_data[i] = (float *) malloc(MAX_COLUMNS_TESTING * sizeof(float));
+  }
+  printf("Loading testing data. \n");
+  char* testing_data_file = test_name;
+  if(LoadCSV(testing_data, testing_data_file, 4252, MAX_ROWS_TESTING, MAX_COLUMNS_TESTING)) {
+      printf("Testing data loaded. \n");
+  } else {
+      printf("Failed to load testing data from %s. \n", testing_data_file);
+      return 0;
+  }
+
+
+}
+
 
 //on the cpu
 int main(void){
-//things on host:testing and training data
-    // array that holds all converted training data
-    float **training_data = (float **) malloc(MAX_ROWS_TRAINING * sizeof(float *));
-    for(int i = 0; i < MAX_ROWS_TRAINING; i++) {
-        training_data[i] = (float *) malloc(MAX_COLUMNS_TRAINING * sizeof(float));
-    }
-    printf("Loading training data. \n");
-    char* training_data_file = "training_data.csv";
-    if(LoadCSV(training_data, training_data_file, 17012, MAX_ROWS_TRAINING, MAX_COLUMNS_TRAINING)) {
-        printf("Training data loaded. \n");
-    } else {
-        printf("Failed to load training data from %s. \n", training_data_file);
-        return 0;
-    }
 
-    //array that holds all converted testing data & alloc space for host and setup input values
-    float **testing_data = (float **) malloc(MAX_ROWS_TESTING * sizeof(float *));
-    for(int i = 0; i < MAX_ROWS_TESTING; i++) {
-        testing_data[i] = (float *) malloc(MAX_COLUMNS_TESTING * sizeof(float));
-    }
-    printf("Loading testing data. \n");
-    char* testing_data_file = "testing_data.csv";
-    if(LoadCSV(testing_data, testing_data_file, 4252, MAX_ROWS_TESTING, MAX_COLUMNS_TESTING)) {
-        printf("Testing data loaded. \n");
-    } else {
-        printf("Failed to load testing data from %s. \n", testing_data_file);
-        return 0;
-    }
-    return 0;
-    printf("Actual logistic regression. \n");
-    int modelID = 1, n_models = 2;
-    float lr = 0.01;
-    int max_iters = 10000;
-    printf("--Extracting and re-labelling train predictor...");
-    int* yvec = (int * ) malloc(sizeof(int) * MAX_ROWS_TRAINING);
-    extract_yvec(training_data, yvec, MAX_ROWS_TRAINING);
-    relabel_yvec(yvec, MAX_ROWS_TRAINING, modelID, n_models);
-    printf(" done!-- \n");
+  float **testing_data = (float **) malloc(MAX_ROWS_TESTING * sizeof(float *));
+  float **training_data = (float **) malloc(MAX_ROWS_TRAINING * sizeof(float *));
+  setup(16896, 4096 ,"training_data.csv", "testing_data.csv", testing_data, training_data);
 
-    // linearize the data
-    float * train_final = (float *) malloc(MAX_COLUMNS_TRAINING * MAX_ROWS_TRAINING * sizeof(float));
-    linearizeArray(training_data, train_final, MAX_ROWS_TRAINING, MAX_COLUMNS_TRAINING );
-    float * test_final = (float *) malloc(MAX_COLUMNS_TESTING * MAX_ROWS_TESTING * sizeof(float));
-    linearizeArray(testing_data, test_final, MAX_ROWS_TESTING, MAX_COLUMNS_TESTING);
+  //WHERE THE //ism begins : 12 models running at //a parent that runs log for all 12 sets
+  //a parent that runs log for all 12 sets
 
-    printf("--Training model...");
-    float* betas = (float*) malloc(sizeof(float) * MAX_COLUMNS_TESTING);
-    initialize_betas(betas);
 
-    time_t start, end;
-    time(&start);
-    grad_desc(yvec, betas, train_final, lr, max_iters );
-    time(&end);
+  printf("Actual logistic regression. \n");
+  float lr = 0.01;
+  int max_iters = 10000;
+  printf("--Extracting and re-labelling train predictor...");
+  int* yvec = (int * ) malloc(sizeof(int) * MAX_ROWS_TRAINING);
+  extract_yvec(training_data, yvec, MAX_ROWS_TRAINING);
+  relabel_yvec(yvec, MAX_ROWS_TRAINING, modelID, n_models);
+  printf(" done!-- \n");
 
-    printf("done! ------");
-    int time_taken = int(end-start);
+  // linearize the data
+  float * train_final = (float *) malloc(MAX_COLUMNS_TRAINING * MAX_ROWS_TRAINING * sizeof(float));
+  linearizeArray(training_data, train_final, MAX_ROWS_TRAINING, MAX_COLUMNS_TRAINING );
+  float * test_final = (float *) malloc(MAX_COLUMNS_TESTING * MAX_ROWS_TESTING * sizeof(float));
+  linearizeArray(testing_data, test_final, MAX_ROWS_TESTING, MAX_COLUMNS_TESTING);
 
-    printf("Training time: %i ", time_taken);
-    printf("--Printing betas...\n");
-    for(int i=0; i< MAX_COLUMNS_TESTING; i++){
-        printf("%f, ", betas[i]);
-    }
-    printf("\nEnd printing betas--\n");
-    free(train_final);
-    free(yvec);
+  printf("--Training model...");
+  float* betas = (float*) malloc(sizeof(float) * MAX_COLUMNS_TESTING);
+  initialize_betas(betas);
 
-    printf("--- Extracting and re-labelling test predictor...");
+  time_t start, end;
+  time(&start);
+  grad_desc(yvec, betas, train_final, lr, max_iters );
+  time(&end);
 
-    int* yvec_test = (int * ) malloc(sizeof(int) * MAX_ROWS_TESTING);
-    extract_yvec(testing_data, yvec_test, MAX_ROWS_TESTING);
-    relabel_yvec(yvec_test, MAX_ROWS_TESTING, modelID, n_models);
-    printf(" done! --- ");
+  printf("done! ------");
+  int time_taken = int(end-start);
 
-    printf("--- Testing model...");
-    //running predict
-    float percent_correct = predict(betas, test_final, yvec_test);
-    printf(" done");
-    printf("Percent correct: %f %", percent_correct);
+  printf("Training time: %i ", time_taken);
+  printf("--Printing betas...\n");
+  for(int i=0; i< MAX_COLUMNS_TESTING; i++){
+      printf("%f, ", betas[i]);
+  }
+  printf("\nEnd printing betas--\n");
+  free(train_final);
+  free(yvec);
 
-    free(test_final);
-    free(yvec_test);
-    free(betas);
+  printf("--- Extracting and re-labelling test predictor...");
+
+  int* yvec_test = (int * ) malloc(sizeof(int) * MAX_ROWS_TESTING);
+  extract_yvec(testing_data, yvec_test, MAX_ROWS_TESTING);
+  relabel_yvec(yvec_test, MAX_ROWS_TESTING, modelID, n_models);
+  printf(" done! --- ");
+
+  printf("--- Testing model...");
+  //running predict
+  float percent_correct = predict(betas, test_final, yvec_test);
+  printf(" done");
+  printf("Percent correct: %f %", percent_correct);
+
+  free(test_final);
+  free(yvec_test);
+  free(betas);
+
+
+
+
     return 0;
 }
