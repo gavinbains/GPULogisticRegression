@@ -24,7 +24,7 @@ __global__ void logistic_func(float* log_func_v, float* betas, float* data) {
     int row_index = blockIdx.x * blockDim.x + threadIdx.x;
     float temp = 0;
     for(int j = 0; j < features; j++) {
-        temp += betas[j] + data[(row_index * features) + j];
+        temp += betas[j] * data[(row_index * features) + j];
     }
     log_func_v[row_index] = 1.0 / (1.0 + expf(-1.0 * temp));
 }
