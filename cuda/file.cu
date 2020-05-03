@@ -120,7 +120,7 @@ __host__ void grad_desc( int* yvec, float* betas, float* data, float lr, int max
         log_gradient<<</*for now!*/1, MAX_COLUMNS_TRAINING>>>(gpu_log_func_v,
             gpu_gradient, gpu_betas, gpu_data, gpu_yvec);
         // copy new gradient values
-        time(&beta_start)
+        time(&beta_start);
         cudaMemcpy(gradient, gpu_gradient, sizeof(float) * MAX_COLUMNS_TRAINING, cudaMemcpyDeviceToHost);
         time(&beta_end);
         beta_cpy_time += long(beta_end - beta_start);
