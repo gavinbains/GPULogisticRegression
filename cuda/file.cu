@@ -19,6 +19,9 @@
 __constant__ int features = 26;
 __constant__ int num_rows = 16896;
 
+long mem_cpy_time = 0;
+long beta_cpy_time = 0;
+
 // parallelized across the rows
 __global__ void logistic_func(float* log_func_v, float* betas, float* data) {
     int row_index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -93,14 +96,23 @@ __host__ void grad_desc( int* yvec, float* betas, float* data, float lr, int max
     cudaMalloc((void**) &gpu_log_func_v, sizeof(float) * MAX_ROWS_TRAINING);
     // upload data and yvec; these properties do not change and thus do not need
     // to be reuploaded on each iteration!
+    time_t data_start, data_end;
+    time(&data_start);
     cudaMemcpy(gpu_data, data, sizeof(float) * MAX_COLUMNS_TESTING * MAX_ROWS_TESTING, cudaMemcpyHostToDevice);
     cudaMemcpy(gpu_yvec, yvec, sizeof(int) * MAX_ROWS_TRAINING, cudaMemcpyHostToDevice);
+    time(&data_end);
+    mem_cpy_time = long(data_end - data_start);
 
     float* gradient = (float*) malloc(sizeof(float) * MAX_COLUMNS_TRAINING);
     for(int i = 0; i < max_iters; i++) {
 
         // upload beta, data, and yvec values into the GPU
+        beta_cpy_time = 0;
+        time_t beta_start, beta_end;
+        time(&beta_start)
         cudaMemcpy(gpu_betas, betas, sizeof(float) * MAX_COLUMNS_TESTING, cudaMemcpyHostToDevice);
+        time(&beta_end);
+        beta_cpy_time += long(beta_end - beta_start);
         // launch logistic_func kernel
         logistic_func<<</*for now!*/33, 512>>>(gpu_log_func_v, gpu_betas,
             gpu_data);
@@ -108,7 +120,10 @@ __host__ void grad_desc( int* yvec, float* betas, float* data, float lr, int max
         log_gradient<<</*for now!*/1, MAX_COLUMNS_TRAINING>>>(gpu_log_func_v,
             gpu_gradient, gpu_betas, gpu_data, gpu_yvec);
         // copy new gradient values
+        time(&beta_start)
         cudaMemcpy(gradient, gpu_gradient, sizeof(float) * MAX_COLUMNS_TRAINING, cudaMemcpyDeviceToHost);
+        time(&beta_end);
+        beta_cpy_time += long(beta_end - beta_start);
         // update betas
         for(int b = 0; b < MAX_COLUMNS_TRAINING; b++) {
             betas[b] -= lr * gradient[b];
@@ -179,7 +194,7 @@ __host__ float predict(float* betas, float* data, int* yvec) {
     cudaMalloc((void**)&gpu_log_func_v, sizeof(float) * MAX_ROWS_TESTING);
     cudaMalloc((void**)&gpu_test_data, sizeof(float) * MAX_COLUMNS_TESTING * MAX_ROWS_TESTING);
     cudaMalloc((void**)&gpu_betas, sizeof(float) * MAX_COLUMNS_TESTING);
-
+    
     cudaMemcpy(gpu_test_data, data, sizeof(float) * MAX_COLUMNS_TESTING * MAX_ROWS_TESTING, cudaMemcpyHostToDevice);
     cudaMemcpy(gpu_betas, betas, sizeof(float) * MAX_COLUMNS_TESTING, cudaMemcpyHostToDevice);
     logistic_func<<<8, 512>>>(gpu_log_func_v, gpu_betas, gpu_test_data);
