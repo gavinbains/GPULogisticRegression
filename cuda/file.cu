@@ -24,8 +24,9 @@ __global__ void logistic_func(float* log_func_v, float* betas, float* data) {
     int row_index = blockIdx.x * blockDim.x + threadIdx.x;
     float temp = 0;
     for(int j = 0; j < features; j++) {
-        if((betas[j] != 0.0) && ((int) data[(row_index * features) + j] != 0)) {
-            temp += betas[j] * data[(row_index * features) + j];
+        float accessed_data = data[(row_index * features) + j];
+        if((betas[j] != 0.0) && (accessed_data != 0.0f)) {
+            temp += betas[j] * accessed_data;
         }
     }
     log_func_v[row_index] = 1.0 / (1.0 + expf(-1.0 * temp));
@@ -39,8 +40,9 @@ __global__ void log_gradient(float* log_func_v,  float* gradient, float* betas,
     float temp = 0.0f;
     for(int i = 0; i < num_rows; i++) {
         float sub = log_func_v[i] - yvec[i];
-        if((sub != 0.0f) && ((int) data[(i * features) + feature_index] != 0)) {
-            temp += sub * data[(i * features) + feature_index];
+        float accessed_data = data[(i * features) + feature_index];
+        if((sub != 0.0f) && (accessed_data != 0)) {
+            temp += sub * accessed_data;
         }
     }
     gradient[feature_index] = temp;
