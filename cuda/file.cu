@@ -28,9 +28,7 @@ __global__ void logistic_func(float* log_func_v, float* betas, float* data) {
     float temp = 0;
     for(int j = 0; j < features; j++) {
         float accessed_data = data[(row_index * features) + j];
-        if((betas[j] != 0.0) && (accessed_data != 0.0f)) {
-            temp += betas[j] * accessed_data;
-        }
+        temp += betas[j] * accessed_data;
     }
     log_func_v[row_index] = 1.0 / (1.0 + expf(-1.0 * temp));
 }
@@ -44,9 +42,7 @@ __global__ void log_gradient(float* log_func_v,  float* gradient, float* betas,
     for(int i = 0; i < num_rows; i++) {
         float sub = log_func_v[i] - yvec[i];
         float accessed_data = data[(i * features) + feature_index];
-        if((sub != 0.0f) && (accessed_data != 0)) {
-            temp += sub * accessed_data;
-        }
+        temp += sub * accessed_data;
     }
     gradient[feature_index] = temp;
 }
@@ -96,12 +92,15 @@ __host__ void grad_desc( int* yvec, float* betas, float* data, float lr, int max
     cudaMalloc((void**) &gpu_log_func_v, sizeof(float) * MAX_ROWS_TRAINING);
     // upload data and yvec; these properties do not change and thus do not need
     // to be reuploaded on each iteration!
+    long mem_cpy_time = 0;
     time_t data_start, data_end;
     time(&data_start);
     cudaMemcpy(gpu_data, data, sizeof(float) * MAX_COLUMNS_TESTING * MAX_ROWS_TESTING, cudaMemcpyHostToDevice);
     cudaMemcpy(gpu_yvec, yvec, sizeof(int) * MAX_ROWS_TRAINING, cudaMemcpyHostToDevice);
     time(&data_end);
     mem_cpy_time = long(data_end - data_start);
+    printf("Initial upload time: %ld. \n", mem_cpy_time);
+    long beta_cpy_time = 0;
 
     float* gradient = (float*) malloc(sizeof(float) * MAX_COLUMNS_TRAINING);
     for(int i = 0; i < max_iters; i++) {
@@ -129,6 +128,7 @@ __host__ void grad_desc( int* yvec, float* betas, float* data, float lr, int max
             betas[b] -= lr * gradient[b];
         }
     }
+    printf("Beta upload time: %ld \n", beta_cpy_time);
     // free all your memory
 
     free(gradient);
@@ -287,8 +287,6 @@ int main(void){
     int time_taken = int(end-start);
 
     printf("Training time: %i \n", time_taken);
-    printf("Initial upload time: %ld \n", mem_cpy_time);
-    printf("Beta upload time: %ld \n", beta_cpy_time);
     printf("--Printing betas...\n");
     for(int i=0; i< MAX_COLUMNS_TESTING; i++){
         printf("%f, ", betas[i]);
