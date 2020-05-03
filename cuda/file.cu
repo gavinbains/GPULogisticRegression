@@ -24,7 +24,9 @@ __global__ void logistic_func(float* log_func_v, float* betas, float* data) {
     int row_index = blockIdx.x * blockDim.x + threadIdx.x;
     float temp = 0;
     for(int j = 0; j < features; j++) {
-        temp += betas[j] * data[(row_index * features) + j];
+        if((betas[j] != 0.0) && ((int) data[(row_index * features) + j] != 0)) {
+            temp += betas[j] * data[(row_index * features) + j];
+        }
     }
     log_func_v[row_index] = 1.0 / (1.0 + expf(-1.0 * temp));
 }
@@ -36,7 +38,10 @@ __global__ void log_gradient(float* log_func_v,  float* gradient, float* betas,
     int feature_index = blockIdx.x * blockDim.x + threadIdx.x;
     float temp = 0.0f;
     for(int i = 0; i < num_rows; i++) {
-        temp += (log_func_v[i] - yvec[i]) * data[(i * features) + feature_index];
+        float sub = log_func_v[i] - yvec[i];
+        if((sub != 0.0f) && ((int) data[(i * features) + feature_index] != 0)) {
+            temp += sub * data[(i * features) + feature_index];
+        }
     }
     gradient[feature_index] = temp;
 }
@@ -284,7 +289,7 @@ int main(void){
     //running predict
     float percent_correct = predict(betas, test_final, yvec_test);
     printf(" done");
-    printf("Percent correct: %f %", percent_correct);
+    printf("Percent correct: %f", percent_correct);
 
     free(test_final);
     free(yvec_test);
