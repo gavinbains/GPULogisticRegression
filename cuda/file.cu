@@ -109,7 +109,7 @@ __host__ void grad_desc( int* yvec, float* betas, float* data, float lr, int max
         // upload beta, data, and yvec values into the GPU
         beta_cpy_time = 0;
         time_t beta_start, beta_end;
-        time(&beta_start)
+        time(&beta_start);
         cudaMemcpy(gpu_betas, betas, sizeof(float) * MAX_COLUMNS_TESTING, cudaMemcpyHostToDevice);
         time(&beta_end);
         beta_cpy_time += long(beta_end - beta_start);
@@ -286,7 +286,9 @@ int main(void){
     printf("done! ------");
     int time_taken = int(end-start);
 
-    printf("Training time: %i ", time_taken);
+    printf("Training time: %i \n", time_taken);
+    printf("Initial upload time: %ld \n", mem_cpy_time);
+    printf("Beta upload time: %ld \n", beta_cpy_time);
     printf("--Printing betas...\n");
     for(int i=0; i< MAX_COLUMNS_TESTING; i++){
         printf("%f, ", betas[i]);
